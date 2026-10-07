@@ -1,0 +1,19 @@
+# Google expert-label column -> TorchXRayVision densenet121-res224-chex output.
+# The chex model's outputs were checked against the torchxrayvision source (model_urls['chex']['labels']).
+# Column names: confirm against the CSV headers once the labels arrive (01_inference.py prints them).
+model_weights: densenet121-res224-chex
+four_findings:
+  "Airspace opacity": "Lung Opacity"
+  "Pneumothorax": "Pneumothorax"
+  "Nodule or mass": "Lung Lesion"
+  "Fracture": "Fracture"
+hedge_policy: exclude   # HEDGE labels excluded from the primary analysis; sensitivity analysis counts them as positive
+all_findings:            # the 7 of 14 NIH findings the chex model outputs
+  "Atelectasis": "Atelectasis"
+  "Cardiomegaly": "Cardiomegaly"
+  "Consolidation": "Consolidation"
+  "Edema": "Edema"
+  "Effusion": "Effusion"
+  "Pneumonia": "Pneumonia"
+  "Pneumothorax": "Pneumothorax"
+abnormal_score: max     # normal/abnormal: max over model outputs (no "No Finding" output in this model)
