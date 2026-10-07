@@ -100,6 +100,7 @@ the NIH metadata (`Patient ID`, `Patient Age`, `Patient Gender`, `View Position`
 |---|---|---|---|
 | `HEDGE` label | — | Not applicable: the adjudicated file has no HEDGE values (§4) | — |
 | Labelled image not found or unreadable | Any | Excluded; listed by name in `run.json` | — |
+| Implausible age (> 110; one image, recorded as 155) | Age subgroup only | Age treated as missing; image kept | — |
 | Missing metadata (age, sex, view) | Subgroup tables only | Image kept in the overall analysis, left out of that subgroup | — |
 | Subgroup with < 5 positives or < 5 negatives | Subgroup AUROC | Not estimated; counts still reported | — |
 

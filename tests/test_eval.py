@@ -106,37 +106,62 @@ def test_subgroups_parse_nih_metadata():
                        "Follow-up #": [0, 3, 5, 12]})
     g = data.add_subgroups(df)
     assert g["sg_age"].tolist()[:3] == ["40-59", "<40", "80+"] and pd.isna(g["sg_age"][3])
+    assert pd.isna(data.add_subgroups(df.assign(**{"Patient Age": 155}))["sg_age"][0])  # NIH data-entry error
     assert g["sg_sex"].tolist()[:3] == ["M", "F", "M"] and pd.isna(g["sg_sex"][3])
     assert g["sg_view"].tolist() == ["PA", "AP", "PA", "AP"]
     assert g["sg_followup"].tolist() == ["0", "1-4", "5+", "5+"]
     assert data.patient_id(df)[0] == 13
 
 
-def test_end_to_end_on_synthetic(tmp_path):
+def run_pipeline(tmp_path, all_findings):
     run = lambda *a: subprocess.run([sys.executable, *a], check=True, capture_output=True, text=True)  # noqa: E731
     run(os.path.join(ROOT, "scripts", "make_synthetic.py"), "--out", str(tmp_path))
     out = tmp_path / "results"
+    extra = ["--all-findings", str(tmp_path / "all_findings_test_labels.csv")] if all_findings else []
     run(os.path.join(ROOT, "scripts", "02_evaluate.py"), "--preds", str(tmp_path / "predictions.csv"),
-        "--labels", str(tmp_path / "labels"), "--out", str(out), "--n-boot", "100")
+        "--labels", str(tmp_path / "four_findings_labels.csv.gz"), "--out", str(out), "--n-boot", "100", *extra)
+    return out
+
+
+def test_end_to_end_four_findings(tmp_path):
+    out = run_pipeline(tmp_path, all_findings=False)
 
     disc = pd.read_csv(out / "discrimination.csv")
-    assert len(disc) == 2 * (4 + 7 + 1)  # AUROC + AUPRC for 4 + 7 findings + abnormal
+    assert len(disc) == 2 * 4 and set(disc["task"]) == {"four_findings"}
     assert (disc["ci_low"] <= disc["estimate"]).all() and (disc["estimate"] <= disc["ci_high"]).all()
 
-    calib = pd.read_csv(out / "calibration.csv")
-    scaled = calib[calib.version == "temperature_scaled"]
+    calib = pd.read_csv(out / "calibration.csv").set_index(["finding", "version"])["ece"]
+    scaled = pd.read_csv(out / "calibration.csv").query("version == 'temperature_scaled'")
     assert len(scaled) == 4 and (scaled["temperature"] > 1.5).all()
-    raw = calib[(calib.version == "raw") & (calib.task == "four_findings")].set_index("finding")
-    raw = raw.loc[scaled["finding"], "ece"].to_numpy()
-    assert (scaled["ece"].to_numpy() < raw).all()
+    assert all(calib[(f, "temperature_scaled")] < calib[(f, "raw")] for f in scaled["finding"])
 
-    view = pd.read_csv(out / "subgroups.csv").query("task == 'four_findings' and subgroup == 'view'")
+    view = pd.read_csv(out / "subgroups.csv").query("subgroup == 'view'")
     by = view.pivot(index="finding", columns="level", values="estimate")
     assert (by["PA"] > by["AP"]).all()  # built-in AP degradation is detected
 
-
     info = json.load(open(out / "run.json"))
-    assert len(info["tasks"]["four_findings"]["excluded_no_prediction"]) == 3
-    assert info["tasks"]["four_findings"]["hedge_rows_excluded"]["Pneumothorax"] > 0
-    assert info["tasks"]["four_findings"]["patients_in_both_validation_and_test"] == 0
-    assert len(info["sha256"]) == 4
+    t = info["tasks"]["four_findings"]
+    assert (t["test_images"], t["validation_images"]) == (1962 - 3, 2414)  # split by Set Id; 3 without prediction
+    assert len(t["excluded_no_prediction"]) == 3
+    assert t["patients_in_both_validation_and_test"] == 0
+    assert set(info["sha256"]) == {"four_findings_labels", "predictions"}
+
+
+def test_end_to_end_with_all_findings(tmp_path):
+    out = run_pipeline(tmp_path, all_findings=True)
+    disc = pd.read_csv(out / "discrimination.csv")
+    assert len(disc) == 2 * (4 + 7 + 1)  # AUROC + AUPRC for 4 + 7 findings + abnormal
+    assert "all_findings" in json.load(open(out / "run.json"))["tasks"]
+
+
+def test_bundled_label_file_layout():
+    """The real label file, when present locally (data/ is not committed), matches the config."""
+    import yaml
+    cfg = yaml.safe_load(open(os.path.join(ROOT, "configs", "label_map.yaml")))
+    path = os.path.join(ROOT, cfg["label_file"])
+    if not os.path.exists(path):
+        pytest.skip("label file not downloaded")
+    df = data.load_labels(path, cfg["four_findings"])
+    assert df[cfg["split_column"]].value_counts().to_dict() == {"val": 2414, "test": 1962}
+    assert df[list(cfg["four_findings"])].notna().all().all()  # adjudicated: no HEDGE, no blanks
+    assert not set(df.loc[df["Set Id"] == "test", "Patient ID"]) & set(df.loc[df["Set Id"] == "val", "Patient ID"])

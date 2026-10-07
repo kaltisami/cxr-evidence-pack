@@ -1,8 +1,9 @@
 """M1: run densenet121-res224-chex on every image that has a Google expert label; save logits.
 
-Kaggle: attach the dataset `nih-chest-xrays/data` and upload the Google label CSVs as a private dataset.
+Kaggle: attach the dataset `nih-chest-xrays/data`; the labels are the copy bundled in TorchXRayVision
+(torchxrayvision/data/google2019_nih-chest-xray-labels.csv.gz in its GitHub repository).
     pip install torchxrayvision
-    python 01_inference.py --nih /kaggle/input/data --labels /kaggle/input/<labels> --out predictions.csv
+    python 01_inference.py --nih /kaggle/input/data --labels google2019_nih-chest-xray-labels.csv.gz --out predictions.csv
 
 Saves raw logits AND sigmoid probabilities. The library's default output is rescaled around its built-in operating
 thresholds (op_norm), which is not a probability, so calibration analysis must use the raw logits.
@@ -35,13 +36,15 @@ def load(path, transform):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--nih", required=True)
-    ap.add_argument("--labels", required=True, help="folder with the Google expert-label CSVs")
+    ap.add_argument("--labels", required=True, help="label file, or a folder of label files (.csv / .csv.gz)")
     ap.add_argument("--out", default="predictions.csv")
     ap.add_argument("--batch", type=int, default=32)
     a = ap.parse_args()
 
     ids = set()
-    for csv in glob.glob(os.path.join(a.labels, "**", "*.csv"), recursive=True):
+    files = [a.labels] if os.path.isfile(a.labels) else [
+        f for ext in ("*.csv", "*.csv.gz") for f in glob.glob(os.path.join(a.labels, "**", ext), recursive=True)]
+    for csv in files:
         df = pd.read_csv(csv)
         print(csv, list(df.columns))  # confirm column names for configs/label_map.yaml
         if "Image Index" in df.columns:

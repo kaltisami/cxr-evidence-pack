@@ -25,11 +25,12 @@ Devices* (v1, Nov 2024) and pillar 2 of MDCG 2020-1 (technical performance).
 ## Reproduce
 
 1. **Predictions (M1).** A free Kaggle notebook (CPU is enough) with the NIH dataset attached, or a laptop with only
-   the labelled images downloaded. The labels need Google's access form. See `scripts/01_inference.py`.
+   the labelled images downloaded. Labels: Google's four-findings file as bundled in TorchXRayVision
+   (`torchxrayvision/data/google2019_nih-chest-xray-labels.csv.gz`), saved to `data/`. See `scripts/01_inference.py`.
 2. **Evaluation (M2).** `pip install -r requirements-eval.txt`, then
 
    ```
-   python scripts/02_evaluate.py --preds predictions.csv --labels <google-labels-folder> --out results/
+   python scripts/02_evaluate.py --preds predictions.csv --out results/
    ```
 
    AUROC/AUPRC with patient-level bootstrap 95% CIs, confusion tables at the as-shipped and a

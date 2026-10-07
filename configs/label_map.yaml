@@ -1,14 +1,15 @@
 # Google expert-label column -> TorchXRayVision densenet121-res224-chex output.
 # The chex model's outputs were checked against the torchxrayvision source (model_urls['chex']['labels']).
-# Column names: confirm against the CSV headers once the labels arrive (01_inference.py prints them).
+# Four-findings column names confirmed on the label file (7 Oct 2026). All-findings names are unconfirmed:
+# that set is not available in this version (docs/data-dossier.md §2).
 model_weights: densenet121-res224-chex
 four_findings:
   "Airspace opacity": "Lung Opacity"
   "Pneumothorax": "Pneumothorax"
   "Nodule or mass": "Lung Lesion"
   "Fracture": "Fracture"
-hedge_policy: exclude   # HEDGE labels excluded from the primary analysis; sensitivity analysis counts them as positive
-all_findings:            # the 7 of 14 NIH findings the chex model outputs
+hedge_policy: exclude   # HEDGE handling if a label file has HEDGE values; the adjudicated file has none
+all_findings:            # optional task (--all-findings): the 7 of 14 NIH findings the chex model outputs
   "Atelectasis": "Atelectasis"
   "Cardiomegaly": "Cardiomegaly"
   "Consolidation": "Consolidation"
@@ -18,7 +19,8 @@ all_findings:            # the 7 of 14 NIH findings the chex model outputs
   "Pneumothorax": "Pneumothorax"
 abnormal_score: max     # normal/abnormal: max over model outputs (no "No Finding" output in this model)
 abnormal_column: "Abnormal"   # all-findings normal/abnormal column (YES = abnormal); confirm against the CSV header
-files:                  # relative to the --labels folder; confirm once the labels arrive
-  four_findings_test: four_findings_expert_labels/test_labels.csv
-  four_findings_validation: four_findings_expert_labels/validation_labels.csv
-  all_findings_test: all_findings_expert_labels/test_labels.csv
+label_file: data/google2019_nih-chest-xray-labels.csv.gz  # copy bundled in TorchXRayVision; both splits
+split_column: "Set Id"
+splits:
+  test: test
+  validation: val

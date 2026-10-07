@@ -1,14 +1,17 @@
-"""Synthetic stand-ins for the Google label CSVs and the M1 predictions, to exercise 02_evaluate.py end to end.
+"""Synthetic stand-ins for the label files and the M1 predictions, to exercise 02_evaluate.py end to end.
 
     python scripts/make_synthetic.py --out synthetic
-    python scripts/02_evaluate.py --preds synthetic/predictions.csv --labels synthetic/labels --out synthetic/results
+    python scripts/02_evaluate.py --preds synthetic/predictions.csv --labels synthetic/four_findings_labels.csv.gz \
+        --all-findings synthetic/all_findings_test_labels.csv --out synthetic/results
+
+The four-findings file has the layout of the TorchXRayVision copy of Google's labels (both splits in one file,
+told apart by `Set Id`; adjudicated YES/NO only). The all-findings file uses placeholder column names.
 
 Known truths built in, so the output can be checked:
 - labels are drawn from sigmoid(logit / 2): the "model" is over-confident, so the fitted temperature is > 1
   (about 2 on PA images; the AP noise below pushes the pooled estimate higher);
 - AP images get extra logit noise: AUROC should be lower for view=AP than for PA;
-- HEDGE on ~3% of nodule/mass and pneumothorax labels; 3 labelled images have no prediction (exclusions).
-Column names follow configs/label_map.yaml and NIH metadata; they are placeholders until the real headers are seen.
+- 3 labelled test images have no prediction (exclusions).
 Nothing here is real patient data.
 """
 import argparse
@@ -62,16 +65,14 @@ def main():
     a = ap_.parse_args()
     rng = np.random.default_rng(a.seed)
     cfg = yaml.safe_load(open(os.path.join(HERE, "..", "configs", "label_map.yaml")))
-    lab = os.path.join(a.out, "labels")
+    os.makedirs(a.out, exist_ok=True)
 
-    test, val = images(1962, 1, rng), images(2412, 20_000, rng)
+    test, val = images(1962, 1, rng), images(2414, 20_000, rng)
     pred_rows = []
     for meta in (test, val):
         z, ap = logits_for(meta, rng)
         for col, out in cfg["four_findings"].items():
             meta[col] = labels_from(z[out], ap, rng)
-            if col in ("Nodule or mass", "Pneumothorax"):
-                meta.loc[rng.random(len(meta)) < 0.03, col] = "HEDGE"
         pred_rows.append(pd.DataFrame({"Image Index": meta["Image Index"],
                                        **{f"logit_{o}": z[o] for o in OUTPUTS},
                                        **{f"prob_{o}": expit(z[o]) for o in OUTPUTS}}))
@@ -88,14 +89,14 @@ def main():
     any_yes = (allf[NIH_14 + ["Other"]] == "YES").any(axis=1)
     allf[cfg["abnormal_column"]] = np.where(any_yes, "YES", "NO")
 
-    for key, df in [("four_findings_test", test), ("four_findings_validation", val), ("all_findings_test", allf)]:
-        path = os.path.join(lab, cfg["files"][key])
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        df.drop(columns=["_z", "_ap"], errors="ignore").to_csv(path, index=False)
+    four = pd.concat([test.assign(**{cfg["split_column"]: cfg["splits"]["test"]}),
+                      val.assign(**{cfg["split_column"]: cfg["splits"]["validation"]})], ignore_index=True)
+    four.drop(columns=["_z", "_ap"]).to_csv(os.path.join(a.out, "four_findings_labels.csv.gz"), index=False)
+    allf.to_csv(os.path.join(a.out, "all_findings_test_labels.csv"), index=False)
     preds = pd.concat(pred_rows, ignore_index=True)
     preds = preds[~preds["Image Index"].isin(test["Image Index"].iloc[[5, 6, 7]])]  # simulate unreadable files
     preds.to_csv(os.path.join(a.out, "predictions.csv"), index=False)
-    print(f"wrote {a.out}/predictions.csv and {lab}/ (true temperature {TRUE_T})")
+    print(f"wrote {a.out}/: predictions and label files (true temperature {TRUE_T})")
 
 
 if __name__ == "__main__":

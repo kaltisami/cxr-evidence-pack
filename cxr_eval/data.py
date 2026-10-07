@@ -48,9 +48,13 @@ def merge(labels, preds, meta=None):
     return labels.merge(preds, on="Image Index", how="inner"), no_pred
 
 
+MAX_AGE = 110  # NIH metadata has a few impossible ages (e.g. 155): treated as missing
+
+
 def _age(v):
     m = re.search(r"\d+", str(v))  # NIH ages appear as 58 or, in older releases, "058Y"
-    return float(m.group()) if m else np.nan
+    age = float(m.group()) if m else np.nan
+    return age if age <= MAX_AGE else np.nan
 
 
 AGE_BINS = [0, 40, 60, 80, 200]
