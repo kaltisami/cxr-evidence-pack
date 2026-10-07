@@ -12,7 +12,7 @@ Devices* (v1, Nov 2024) and pillar 2 of MDCG 2020-1 (technical performance).
 |---|---|
 | Model | TorchXRayVision `densenet121-res224-chex` (DenseNet-121, trained on CheXpert only) |
 | Test images | NIH ChestX-ray14 (NIH Clinical Center, CC0): an external site for this model |
-| Reference standard | Google Health radiologist-adjudicated labels: 4 findings (1.962 test images), all findings + normal/abnormal (810 PA test images) |
+| Reference standard | Google Health radiologist-adjudicated labels for 4 findings: 1.962 test images; 2.414 validation images used only for calibration and threshold choice |
 
 ## Contents (filled milestone by milestone)
 
@@ -24,9 +24,11 @@ Devices* (v1, Nov 2024) and pillar 2 of MDCG 2020-1 (technical performance).
 
 ## Reproduce
 
-1. **Predictions (M1).** A free Kaggle notebook (CPU is enough) with the NIH dataset attached, or a laptop with only
-   the labelled images downloaded. Labels: Google's four-findings file as bundled in TorchXRayVision
-   (`torchxrayvision/data/google2019_nih-chest-xray-labels.csv.gz`), saved to `data/`. See `scripts/01_inference.py`.
+1. **Images and predictions (M1).** `python scripts/00_download_images.py` fetches only the 4.376 labelled NIH
+   images (~1,9 GB) from Kaggle into `data/nih/`; no Kaggle account needed. Labels: Google's four-findings file
+   as bundled in TorchXRayVision (`torchxrayvision/data/google2019_nih-chest-xray-labels.csv.gz`), saved to
+   `data/`. Then `scripts/01_inference.py --nih data/nih --labels data/google2019_nih-chest-xray-labels.csv.gz`
+   (CPU is enough).
 2. **Evaluation (M2).** `pip install -r requirements-eval.txt`, then
 
    ```
