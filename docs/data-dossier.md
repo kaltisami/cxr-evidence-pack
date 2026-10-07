@@ -1,7 +1,7 @@
 # Data dossier
 
-Status: **draft** (written before the expert labels were received). Items marked _to confirm_ are checked
-against the label files on arrival; counts in §7 are filled from `results/run.json`.
+Status: **draft**. The four-findings label file has been received and checked (7 Oct 2026); counts in §7–8 are
+filled from `results/run.json` at M1.
 
 This dossier answers the data-management questions of the Team-NB *Questionnaire: Artificial Intelligence in
 Medical Devices* (v1, Nov 2024), §6.3, for an evaluation-only study: no model is trained or fine-tuned here, so
@@ -13,8 +13,8 @@ training data.
 | Role | Data | Images | Source |
 |---|---|---|---|
 | Test, task 1 | NIH ChestX-ray14 images × Google four-findings expert labels, test split | 1.962 | NIH Clinical Center; Google Health |
-| Tuning (temperature, thresholds) | Same, validation split | 2.412 | idem |
-| Test, task 2 | NIH ChestX-ray14 PA images × Google all-findings expert labels | 810 (subset of the 1.962) | idem |
+| Tuning (temperature, thresholds) | Same, validation split | 2.414 | idem |
+| ~~Test, task 2~~ | NIH ChestX-ray14 PA images × Google all-findings expert labels | 810 | **Not available** (§2): out of scope for this version |
 | Model under test | TorchXRayVision `densenet121-res224-chex` | — | Cohen et al.; trained on CheXpert (Stanford) |
 
 No image or label is redistributed in this repository. Anyone can rebuild the analysis from the original
@@ -25,8 +25,8 @@ sources (§2) with `scripts/01_inference.py` and `scripts/02_evaluate.py`.
 | Item | Origin | How obtained | Version / integrity |
 |---|---|---|---|
 | Images | NIH Clinical Center, Bethesda (USA). ChestX-ray14: 112.120 frontal chest radiographs of 30.805 patients, PNG 1024×1024, 8-bit, converted from the hospital PACS (Wang et al. 2017) | Kaggle dataset `nih-chest-xrays/data` (mirror of the NIH Box release); only the labelled images are read | Kaggle dataset version and access date recorded at M1 |
-| Four-findings labels | Google Health; Majkowska et al. 2020 | Access form on the Google Cloud dataset page; Cloud Storage bucket (requester pays) | SHA-256 of `test_labels.csv`, `validation_labels.csv` in `run.json` |
-| All-findings labels | Google Health; Nabulsi et al. 2021 | idem | SHA-256 of `test_labels.csv` in `run.json` |
+| Four-findings labels | Google Health; Majkowska et al. 2020 | Copy bundled in the TorchXRayVision repository: `torchxrayvision/data/google2019_nih-chest-xray-labels.csv.gz` (last changed in commit `8ef8846141`, 22 Jun 2021). Google's own Cloud Storage bucket serves an approval list only: on 7 Oct 2026 it refused read access to an authenticated account with a billing project, and the access form linked from the dataset page returned "file not found" | SHA-256 `1d1b846e463753ed0219f67e21b10c8aef381897dbd64865c8191aa5794e8048`, also recorded in `run.json` |
+| All-findings labels | Google Health; Nabulsi et al. 2021 | Not obtained: only in Google's restricted bucket | — |
 | Image metadata (sex, age, view, follow-up number) | NIH `Data_Entry_2017.csv`, or the metadata columns carried in Google's label files | With the images | idem |
 | Model weights | Cohen et al., TorchXRayVision; DenseNet-121 trained on CheXpert | `pip install torchxrayvision`; weights downloaded by the library | Library version pinned at M1; as-shipped thresholds copied from source commit `6e9c706ed1` (`configs/shipped_thresholds.yaml`) |
 
@@ -35,7 +35,7 @@ sources (§2) with `scripts/01_inference.py` and `scripts/02_evaluate.py`.
 | Item | Terms | Consequence here |
 |---|---|---|
 | NIH images | Google Cloud documentation: "no restrictions on the use of the NIH chest x-ray images"; attribution required: link to the NIH download site and cite Wang et al., CVPR 2017. Commonly listed as CC0 | Used; attributed in README and report; not redistributed |
-| Google expert labels | Access by form. The dataset page **states no licence for the labels**; it requires citing Majkowska 2020 and Nabulsi 2021. _To confirm: the terms accepted in the form_ | Used for evaluation only; labels not redistributed; derived per-image outputs published only if the form terms allow it (otherwise aggregate results only) |
+| Google expert labels | The dataset page **states no licence for the labels**; it requires citing Majkowska 2020 (and Nabulsi 2021 for the all-findings set). Google's request form asks only for affiliation type and purpose, with no terms to accept. The copy used here is redistributed by TorchXRayVision (Apache-2.0 repository) | Used for evaluation only; cited; not redistributed here; only aggregate results are published |
 | TorchXRayVision code | Apache-2.0 | Used |
 | `chex` weights | Trained on CheXpert, distributed under the Stanford Research Use Agreement (non-commercial research) | The pack is a free research artefact: nothing is sold, the weights are not redistributed. A client engagement applies the *method* to the client's own model and data, never these weights |
 | CheXpert, MIMIC-CXR, PadChest, VinDr-CXR | Research-only agreements | Not used |
@@ -44,11 +44,16 @@ sources (§2) with `scripts/01_inference.py` and `scripts/02_evaluate.py`.
 
 **Four findings** (Majkowska et al. 2020). Findings: airspace opacity, pneumothorax, nodule or mass, fracture.
 Each image was read by **three radiologists**; when all agreed after the first read, that label was final;
-otherwise the readers adjudicated until consensus, for **up to five rounds**. Values: `YES`, `NO`, and `HEDGE`
-(uncertain if present or absent), the latter **only for nodule/mass and pneumothorax**. Individual reads are
-published in `individual_readers.csv`, so reader agreement can be reported alongside model performance.
+otherwise the readers adjudicated until consensus, for **up to five rounds**. Readers could answer `YES`, `NO`, or `HEDGE` (uncertain), the latter **only for nodule/mass and pneumothorax**;
+adjudication resolves every image to **`YES` or `NO`**, and the file used here contains only adjudicated values
+(no missing or HEDGE entries). Individual reads exist only in Google's restricted bucket, so reader agreement
+is not reported in this version.
 
-**All findings** (Nabulsi et al. 2021). 810 PA images from the four-findings test split. **Five board-certified
+The file holds both splits (`Set Id`): **1.962 test** images, matching Google's count, and **2.414 validation**
+images, two more than the 2.412 stated on Google's dataset page. The two-image difference is reported, not
+corrected; no subset of either split is used for training.
+
+**All findings** (Nabulsi et al. 2021) — *described for completeness; not used in this version.* 810 PA images from the four-findings test split. **Five board-certified
 radiologists** (American Board of Radiology) read each image independently. Three of the five were chosen at
 random as "ground-truth radiologists"; the final label of each finding and of normal/abnormal is their
 **majority vote**. Values: `YES`, `NO`. An `Other` column is `YES` when the majority saw a finding outside the
@@ -64,11 +69,10 @@ measures agreement with adjudicated radiologists, not with clinical truth.
 - **Different labelling method:** CheXpert training labels were extracted by an NLP labeller from radiology
   reports; the test labels are radiologist reads of the image. Part of any performance gap is a gap in **label
   definition**, not in the model (§6).
-- **No tuning on test data:** temperature and the 90%-sensitivity thresholds are fitted on the 2.412-image
+- **No tuning on test data:** temperature and the 90%-sensitivity thresholds are fitted on the 2.414-image
   validation split and applied unchanged to the test split. The as-shipped thresholds come from the library.
-- **Patient overlap** between the validation and test splits is counted (`run.json`,
-  `patients_in_both_validation_and_test`); _to confirm on arrival_. If non-zero, overlapping patients are
-  removed from the validation split before fitting.
+- **No patient overlap** between the splits: 860 test patients and 835 validation patients, **0 in both**
+  (checked on the label file, 7 Oct 2026; re-checked in `run.json`, `patients_in_both_validation_and_test`).
 
 ## 6. Label mapping (reference standard → model output)
 
@@ -81,20 +85,20 @@ Configured in `configs/label_map.yaml`. Model outputs checked against the TorchX
 | Pneumothorax | Pneumothorax | Direct |
 | Nodule or mass | Lung Lesion | CheXpert "Lung Lesion" covers nodule, mass and other focal lesions: close, not identical |
 | Fracture | Fracture | CheXpert fracture is any fracture mentioned in the report; Google's covers fractures visible on the image |
-| Atelectasis, Cardiomegaly, Consolidation, Edema, Effusion, Pneumonia, Pneumothorax (all-findings set) | Same names | Direct names; "Pneumonia" is partly a clinical, not radiological, label in both sources |
+| Atelectasis, Cardiomegaly, Consolidation, Edema, Effusion, Pneumonia, Pneumothorax (all-findings set, not used in this version) | Same names | Direct names; "Pneumonia" is partly a clinical, not radiological, label in both sources |
 | Normal/abnormal | Maximum logit over all model outputs | The model has no "No finding" output: a derived score, reported as exploratory |
 
-Not mapped in the all-findings set: emphysema, fibrosis, hernia, infiltration, mass, nodule, pleural
+Not mapped in the all-findings set (for a later version): emphysema, fibrosis, hernia, infiltration, mass, nodule, pleural
 thickening (no matching `chex` output, or covered only through "Lung Lesion", which task 1 already tests).
 
-Column names of the label files are _to confirm_: `01_inference.py` prints them, and `02_evaluate.py` stops with
-the actual headers if a configured column is missing.
+Column names confirmed on the label file: `Airspace opacity`, `Pneumothorax`, `Nodule or mass`, `Fracture`, plus
+the NIH metadata (`Patient ID`, `Patient Age`, `Patient Gender`, `View Position`, `Follow-up #`) and `Set Id`.
 
 ## 7. Exclusions and missing data
 
 | Rule | Applies to | Primary analysis | Sensitivity analysis |
 |---|---|---|---|
-| `HEDGE` label | Nodule/mass, pneumothorax (task 1) | Image excluded **for that finding only** | HEDGE counted as positive (`--hedge positive`) |
+| `HEDGE` label | — | Not applicable: the adjudicated file has no HEDGE values (§4) | — |
 | Labelled image not found or unreadable | Any | Excluded; listed by name in `run.json` | — |
 | Missing metadata (age, sex, view) | Subgroup tables only | Image kept in the overall analysis, left out of that subgroup | — |
 | Subgroup with < 5 positives or < 5 negatives | Subgroup AUROC | Not estimated; counts still reported | — |
@@ -102,13 +106,12 @@ the actual headers if a configured column is missing.
 No image-quality filter, no outlier removal, no manual review of images before evaluation. Counts after M1
 (_to fill_):
 
-| | Task 1 test | Task 1 validation | Task 2 |
-|---|---|---|---|
-| Labelled images | 1.962 | 2.412 | 810 |
-| Not found / unreadable | | | |
-| HEDGE, pneumothorax | | | n/a |
-| HEDGE, nodule/mass | | | n/a |
-| Evaluated | | | |
+| | Test | Validation |
+|---|---|---|
+| Labelled images | 1.962 | 2.414 |
+| Patients | 860 | 835 |
+| Not found / unreadable | | |
+| Evaluated | | |
 
 ## 8. Population description (to fill at M1)
 
@@ -127,6 +130,10 @@ number (0, 1–4, 5+), and prevalence of each finding. These are the strata of t
 - **No race or ethnicity, scanner or acquisition-site metadata** in NIH ChestX-ray14: fairness can be checked
   only by sex, age and view.
 - **Reference standard:** image-only reads, see §4; definitional mismatch with the training labels, see §6.
+- **Second-hand copy of the labels:** obtained from the TorchXRayVision repository, not from Google directly
+  (§2). Counts match Google's documentation for the test split; the validation split differs by two images.
+- **Four findings only:** the all-findings and normal/abnormal labels were not obtainable, so the per-finding
+  results for atelectasis, cardiomegaly, effusion and the rest are not part of this version.
 
 ## 10. References
 
