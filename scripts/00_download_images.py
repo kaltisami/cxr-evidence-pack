@@ -5,7 +5,8 @@
     python scripts/00_download_images.py --limit 20     # smoke test
     python scripts/01_inference.py --nih data/nih --labels data/google2019_nih-chest-xray-labels.csv.gz
 
-No Kaggle account is needed for single-file downloads of this public dataset (checked 7 Oct 2026). Files land in
+Anonymous single-file downloads work for a few hundred files, then Kaggle refuses further requests (7 Oct 2026:
+~400 files). kagglehub uses Kaggle credentials when present (`kaggle auth login`). Files land in
 the Kaggle layout, data/nih/images_XXX/images/<Image Index>, which is what 01_inference.py reads. Already
 downloaded files are skipped, so the script can be re-run after an interruption. A manifest (name, folder, bytes,
 SHA-256) is written for the data dossier.
@@ -28,6 +29,9 @@ DATASET = "nih-chest-xrays/data/versions/3"  # pinned: the version Kaggle served
 FOLDER_FIRST = ["00000001_000.png", "00001336_000.png", "00003923_014.png", "00006585_007.png",
                 "00009232_004.png", "00011558_008.png", "00013774_026.png", "00016051_010.png",
                 "00018387_035.png", "00020945_050.png", "00024718_000.png", "00028173_003.png"]
+
+
+MAX_FAILURE_STREAK = 25  # the folder map is verified, so a run of misses means Kaggle is refusing requests
 
 
 def folder_of(name):
@@ -76,22 +80,29 @@ def main():
     names = sorted(pd.read_csv(labels)["Image Index"].unique())[:a.limit]
     os.makedirs(a.out, exist_ok=True)
 
-    done, failed = [], []
+    done, failed, streak = [], [], 0
     with ThreadPoolExecutor(a.workers) as pool:
         jobs = {pool.submit(fetch, n, a.out): n for n in names}
         for i, job in enumerate(as_completed(jobs), 1):
             try:
                 done.append(job.result())
+                streak = 0
             except Exception as e:
                 failed.append({"Image Index": jobs[job], "error": str(e)[:200]})
+                streak += 1
             print(f"{i}/{len(names)}  failed: {len(failed)}", end="\r", flush=True)
+            if streak >= MAX_FAILURE_STREAK:
+                pool.shutdown(wait=False, cancel_futures=True)
+                print(f"\n{streak} failures in a row: Kaggle is refusing requests (anonymous downloads are throttled "
+                      "after a few hundred files). Log in (`kaggle auth login`) or wait, then re-run.")
+                break
 
     rows = []
     for name, folder in sorted(done):
         path = os.path.join(a.out, rel_path(name, folder))
         rows.append({"Image Index": name, "folder": f"images_{folder:03d}", "bytes": os.path.getsize(path),
                      "sha256": sha256(path)})
-    manifest = pd.DataFrame(rows)
+    manifest = pd.DataFrame(rows, columns=["Image Index", "folder", "bytes", "sha256"])
     manifest.to_csv(os.path.join(a.out, "manifest.csv"), index=False)
     if failed:
         pd.DataFrame(failed).to_csv(os.path.join(a.out, "failed.csv"), index=False)
