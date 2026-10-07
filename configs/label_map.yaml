@@ -17,3 +17,8 @@ all_findings:            # the 7 of 14 NIH findings the chex model outputs
   "Pneumonia": "Pneumonia"
   "Pneumothorax": "Pneumothorax"
 abnormal_score: max     # normal/abnormal: max over model outputs (no "No Finding" output in this model)
+abnormal_column: "Abnormal"   # all-findings normal/abnormal column (YES = abnormal); confirm against the CSV header
+files:                  # relative to the --labels folder; confirm once the labels arrive
+  four_findings_test: four_findings_expert_labels/test_labels.csv
+  four_findings_validation: four_findings_expert_labels/validation_labels.csv
+  all_findings_test: all_findings_expert_labels/test_labels.csv

@@ -1,0 +1,14 @@
+# As-shipped operating thresholds of densenet121-res224-chex, on the sigmoid-probability scale.
+# Copied from torchxrayvision/models.py, model_urls['chex']['op_threshs'] (mlmed/torchxrayvision @ 6e9c706ed1,
+# 2026-07-04). The library's op_norm maps each of these to 0.5; we apply them to sigmoid(logit) directly.
+Atelectasis: 0.1988969
+Consolidation: 0.05710573
+Pneumothorax: 0.0531293
+Edema: 0.1435217
+Effusion: 0.27212676
+Pneumonia: 0.07749717
+Cardiomegaly: 0.19712369
+Lung Lesion: 0.09932402
+Fracture: 0.09273402
+Lung Opacity: 0.3270967
+Enlarged Cardiomediastinum: 0.10888247

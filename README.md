@@ -24,7 +24,18 @@ Devices* (v1, Nov 2024) and pillar 2 of MDCG 2020-1 (technical performance).
 
 ## Reproduce
 
-Runs on a free Kaggle notebook (CPU is enough) with the NIH dataset attached. The labels need Google's access form. See `scripts/01_inference.py`.
+1. **Predictions (M1).** A free Kaggle notebook (CPU is enough) with the NIH dataset attached, or a laptop with only
+   the labelled images downloaded. The labels need Google's access form. See `scripts/01_inference.py`.
+2. **Evaluation (M2).** `pip install -r requirements-eval.txt`, then
+
+   ```
+   python scripts/02_evaluate.py --preds predictions.csv --labels <google-labels-folder> --out results/
+   ```
+
+   AUROC/AUPRC with patient-level bootstrap 95% CIs, confusion tables at the as-shipped and a
+   validation-fitted operating point, subgroups (sex, age, view, follow-up), ECE before/after temperature scaling.
+3. **No labels yet?** `python scripts/make_synthetic.py --out synthetic` writes synthetic files in the same format
+   (nothing real), with known answers built in. `pytest tests` checks the metrics against them.
 
 ## Data attribution
 

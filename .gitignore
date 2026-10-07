@@ -2,3 +2,5 @@ results/*.csv
 __pycache__/
 *.png
 !docs/**/*.png
+synthetic/
+results/
